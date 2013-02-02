@@ -3,6 +3,14 @@ SitecoreAdaptiveImages
 
 This is a Sitecore port of the popular Adaptive Images script. This module detects a visitors screen size and uses the built in Sitecore image features to deliver re-scaled versions of images if necessary. It is intended for use with responsive designs.
 
+<b>Setup:</b>
+
+Add this line of JavaScript as high in the head of your main layout as possible, before any other JS: 
+
+<pre>
+<script>document.cookie='resolution='+Math.max(screen.width,screen.height)+'; path=/';</script>
+</pre>
+
 <b>Why would I want this module:</b>
 
 <ul>
