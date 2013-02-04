@@ -1,4 +1,4 @@
-﻿namespace ccfa.configuration.adaptiveImages
+﻿namespace adaptiveImages
 {
     public class AdaptiveImagesMediaProviderHook : Sitecore.Events.Hooks.IHook
     {

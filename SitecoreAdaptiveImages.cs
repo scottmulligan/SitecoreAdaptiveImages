@@ -2,7 +2,7 @@
  * Version: 0.5
  * 
  * Homepage: http://blog.scottymulligan.com
- * GitHub: https://github.com/MattWilcox/Adaptive-Images
+ * GitHub: https://github.com/scottmulligan/SitecoreAdaptiveImages
  * Twitter: @scottmulligan
  * 
  * LEGAL:
@@ -16,7 +16,7 @@ using Sitecore.Diagnostics;
 using System.Linq;
 using System.Web;
 
-namespace ccfa.configuration.adaptiveImages
+namespace adaptiveImages
 {
     public class AdaptiveImagesMediaProvider : MediaProvider
     {
