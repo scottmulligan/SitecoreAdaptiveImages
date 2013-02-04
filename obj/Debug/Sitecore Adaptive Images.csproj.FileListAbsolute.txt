@@ -1,5 +1,0 @@
-C:\Users\Sitecore\Desktop\Scott\Sitecore Adaptive Images\Sitecore Adaptive Images\obj\Debug\ResolveAssemblyReference.cache
-C:\Users\Sitecore\Desktop\Scott\Sitecore Adaptive Images\Sitecore Adaptive Images\bin\SitecoreAdaptiveImages.dll
-C:\Users\Sitecore\Desktop\Scott\Sitecore Adaptive Images\Sitecore Adaptive Images\bin\SitecoreAdaptiveImages.pdb
-C:\Users\Sitecore\Desktop\Scott\Sitecore Adaptive Images\Sitecore Adaptive Images\obj\Debug\SitecoreAdaptiveImages.dll
-C:\Users\Sitecore\Desktop\Scott\Sitecore Adaptive Images\Sitecore Adaptive Images\obj\Debug\SitecoreAdaptiveImages.pdb
