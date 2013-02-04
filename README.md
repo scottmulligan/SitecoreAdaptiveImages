@@ -11,7 +11,9 @@ Add this line of JavaScript as high in the head of your main layout as possible,
 <script type="text/javascript">document.cookie = '<%= Sitecore.Configuration.Settings.GetSetting("cookieName") %>=' + Math.max(screen.width, screen.height) + '; path=/';</script>
 </pre>
 
-<b>Why would I want this module:</b>
+The module itself  can be installed as a package through the installation wizard or the source files can be compiled and the dll and config files can be dropped into your Sitecore solution. You can download the module from the Sitecore Marketplace or GitHub.
+
+<b>Features:</b>
 
 <ul>
 <li>Ensures you and your visitors are not wasting bandwidth delivering images at a higher resolution than the visitor needs.</li>
