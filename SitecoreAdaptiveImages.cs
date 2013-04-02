@@ -24,17 +24,22 @@ namespace adaptiveImages
         /// <summary>
         /// The resolution break-points to use (screen widths, in pixels)
         /// </summary>
-        private readonly int[] resolutions = Sitecore.Configuration.Settings.GetSetting("resolutions").Split(',').Select(int.Parse).ToArray();
+        private readonly int[] _resolutions = Sitecore.Configuration.Settings.GetSetting("resolutions").Split(',').Select(int.Parse).ToArray();
+
+        /// <summary>
+        /// The maximum width that images will be rendered at (Optional)
+        /// </summary>
+        private readonly string _maxWidth = Sitecore.Configuration.Settings.GetSetting("maxWidth");
 
         /// <summary>
         /// If there's no cookie FALSE sends the largest var resolutions version (TRUE sends smallest)
         /// </summary>
-        private readonly bool mobileFirst = String.Compare(Sitecore.Configuration.Settings.GetSetting("mobileFirst"), "true", System.StringComparison.OrdinalIgnoreCase) == 0;
+        private readonly bool _mobileFirst = String.Compare(Sitecore.Configuration.Settings.GetSetting("mobileFirst"), "true", System.StringComparison.OrdinalIgnoreCase) == 0;
 
         /// <summary>
         /// The name of the cookie containing the resolution value
         /// </summary>
-        private readonly string cookieName = Sitecore.Configuration.Settings.GetSetting("cookieName");
+        private readonly string _cookieName = Sitecore.Configuration.Settings.GetSetting("cookieName");
 
         /// <summary>
         /// This list is compared to the user agent returned from the browser to determine if mobile first should be turned off because it is a desktop
@@ -52,7 +57,8 @@ namespace adaptiveImages
         {
             Assert.ArgumentNotNull(item, "item");
 
-            if (!IsImage(item))
+            //If media item is not an image or the page context is not normal, then return
+            if (!IsImage(item) || !Sitecore.Context.PageMode.IsNormal)
                 return base.GetMediaUrl(item);
 
             MediaUrlOptions mediaUrlOptions = new MediaUrlOptions();
@@ -71,27 +77,42 @@ namespace adaptiveImages
             Assert.ArgumentNotNull(item, "item");
             Assert.ArgumentNotNull(mediaUrlOptions, "mediaUrlOptions");
 
-            //If media item is not image, then return
-            if (!IsImage(item))
+            //If media item is not an image or the page context is not normal, then return
+            if (!IsImage(item) || !Sitecore.Context.PageMode.IsNormal)
                 return base.GetMediaUrl(item, mediaUrlOptions);
 
             //If resolution cookie is not set
             if (!IsResolutionCookieSet())
             {
                 //If mobileFirst is set to FALSE or user agent is identifying as a desktop, return with largest break-point resolution
-                if (!mobileFirst || IsDesktopBrowser())
+                if (!_mobileFirst || IsDesktopBrowser())
                 {
-                    mediaUrlOptions.MaxWidth = GetLargestResolution();
+                    mediaUrlOptions.MaxWidth = GetLargestBreakpoint();
                     return base.GetMediaUrl(item, mediaUrlOptions);
                 }
                 //Return with mobile-first breakpoint (Smallest)
-                mediaUrlOptions.MaxWidth = GetMobileFirstResolution();
+                mediaUrlOptions.MaxWidth = GetMobileFirstBreakpoint();
                 return base.GetMediaUrl(item, mediaUrlOptions);
             }
 
-            //If Max-width is not set or Max-width is greater than the selected break-point, then set the Max-width of images to the break-point
+            // If Max-width is not set or Max-width is greater than the selected break-point, then set the Max-width to the break-point
             if (mediaUrlOptions.MaxWidth == 0 || mediaUrlOptions.MaxWidth > GetScreenResolution())
                 mediaUrlOptions.MaxWidth = GetScreenResolution();
+
+            // If Max-width is not set and the 'maxWidth' setting is not empty, then set the Max-width property to the maxWidth
+            if (mediaUrlOptions.MaxWidth == 0 && !string.IsNullOrEmpty(_maxWidth))
+            {
+                int maxWidth = 0;
+                if (int.TryParse(_maxWidth, out maxWidth))
+                {
+                    // If pixel ratio is normal
+                    if (GetCookiePixelDensity() == 1)
+                        mediaUrlOptions.MaxWidth = maxWidth;
+                    else
+                        mediaUrlOptions.MaxWidth = maxWidth * GetCookiePixelDensity();
+                }
+
+            }
 
             return base.GetMediaUrl(item, mediaUrlOptions);
         }
@@ -114,25 +135,25 @@ namespace adaptiveImages
         /// <returns></returns>
         public bool IsResolutionCookieSet()
         {
-            return HttpContext.Current.Request.Cookies[cookieName] != null;
+            return HttpContext.Current.Request.Cookies[_cookieName] != null;
         }
 
         /// <summary>
         /// Gets the mobile first resolution.
         /// </summary>
         /// <returns></returns>
-        public int GetMobileFirstResolution()
+        public int GetMobileFirstBreakpoint()
         {
-            return resolutions.Min();
+            return _resolutions.Min();
         }
 
         /// <summary>
         /// Gets the largest resolution.
         /// </summary>
         /// <returns></returns>
-        public int GetLargestResolution()
+        public int GetLargestBreakpoint()
         {
-            return resolutions.Max();
+            return _resolutions.Max();
         }
 
         /// <summary>
@@ -143,28 +164,97 @@ namespace adaptiveImages
         {
             int resolution = 0;
 
-            //Double check that the cookie identifying screen resolution is set
-            if (HttpContext.Current.Request.Cookies[cookieName] == null)
+            // Double check that the cookie identifying screen resolution is set
+            if (!IsResolutionCookieSet())
                 return resolution;
 
-            //Get the screen resolution cookie and set the "resolution" variable to that value
-            int clientWidth = 0;
-            if (int.TryParse(HttpContext.Current.Request.Cookies[cookieName].Value, out clientWidth))
+            // Get the screen resolution cookie value
+            int clientWidth = GetCookieResolution();
+
+            if (clientWidth != 0)
             {
-                resolution = resolutions.OrderBy(i => i).FirstOrDefault(breakPoint => clientWidth <= breakPoint);
+                // Get the screen pixel density ratio cookie value
+                int clientPixelDensity = GetCookiePixelDensity();
+
+                // if pixel density is 1 (normal), then return the appropriate resolution break point, else we need some more logic
+                if (clientPixelDensity == 1)
+                {
+                    resolution = _resolutions.OrderBy(i => i).FirstOrDefault(breakPoint => clientWidth <= breakPoint);
+                }
+                else
+                {
+                    int totalWidth = clientWidth * clientPixelDensity; // Required physical pixel width of the image
+                    // Try to fit into a breakpoint while ignoring the multiplier
+                    foreach (int breakpoint in _resolutions.Where(breakpoint => totalWidth <= breakpoint))
+                    {
+                        resolution = breakpoint;
+                    }
+                    // Check if the required image width (including multiplier) is bigger than any existing breakpoint value
+                    if (totalWidth > GetLargestBreakpoint())
+                    {
+                        resolution = resolution * clientPixelDensity;
+                    }
+                }
             }
             else
             {
-                //Delete the mangled cookie
-                var httpCookie = HttpContext.Current.Response.Cookies[cookieName];
+                // Delete the mangled cookie
+                var httpCookie = HttpContext.Current.Response.Cookies[_cookieName];
                 if (httpCookie != null)
                     httpCookie.Value = string.Empty;
-                var cookie = HttpContext.Current.Response.Cookies[cookieName];
+                var cookie = HttpContext.Current.Response.Cookies[_cookieName];
                 if (cookie != null)
                     cookie.Expires = DateTime.Now;
             }
 
             return resolution;
+        }
+
+        /// <summary>
+        /// Gets the cookie resolution.
+        /// </summary>
+        /// <returns></returns>
+        public int GetCookieResolution()
+        {
+            // Double check that the cookie identifying screen resolution is set
+            if (!IsResolutionCookieSet())
+                return 0;
+
+            // Split the cookie into resolution and pixel density ratio
+            string[] cookieResolution = HttpContext.Current.Request.Cookies[_cookieName].Value.Split(',');
+            // If we were able to get the cookie resolution
+            if (cookieResolution.Length > 0)
+            {
+                int clientWidth = 0;
+                if (int.TryParse(cookieResolution[0], out clientWidth))
+                    return clientWidth;
+            }
+
+            return 0;
+        }
+
+        /// <summary>
+        /// Gets the cookie pixel density.
+        /// </summary>
+        /// <returns></returns>
+        public int GetCookiePixelDensity()
+        {
+            // Double check that the cookie identifying screen resolution is set
+            if (!IsResolutionCookieSet())
+                return 1;
+
+            // Split the cookie into resolution and pixel density ratio
+            string[] cookieResolution = HttpContext.Current.Request.Cookies[_cookieName].Value.Split(',');
+
+            // If we were able to get the cookie pixel density ratio
+            if (cookieResolution.Length > 1)
+            {
+                int clientPixelDensity = 0;
+                if (int.TryParse(cookieResolution[1], out clientPixelDensity))
+                    return clientPixelDensity;
+            }
+
+            return 1;
         }
 
         /// <summary>
