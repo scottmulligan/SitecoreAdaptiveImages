@@ -15,6 +15,7 @@ using System;
 using Sitecore.Diagnostics;
 using System.Linq;
 using System.Web;
+using Sitecore;
 
 namespace adaptiveImages
 {
@@ -40,6 +41,11 @@ namespace adaptiveImages
         /// The name of the cookie containing the resolution value
         /// </summary>
         private readonly string _cookieName = Sitecore.Configuration.Settings.GetSetting("cookieName");
+
+        /// <summary>
+        /// The name of the live database (ie: web)
+        /// </summary>
+        private readonly string _database = Sitecore.Configuration.Settings.GetSetting("database");
 
         /// <summary>
         /// This list is compared to the user agent returned from the browser to determine if mobile first should be turned off because it is a desktop
@@ -78,7 +84,7 @@ namespace adaptiveImages
             Assert.ArgumentNotNull(mediaUrlOptions, "mediaUrlOptions");
 
             //If media item is not an image or the page context is not normal, then return
-            if (!IsImage(item) || !Sitecore.Context.PageMode.IsNormal)
+            if (!IsImage(item) || !Context.PageMode.IsNormal || Context.Database == null || Context.Database.Name != _database)
                 return base.GetMediaUrl(item, mediaUrlOptions);
 
             //If resolution cookie is not set
