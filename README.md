@@ -7,9 +7,9 @@ This is a Sitecore port of the popular Adaptive Images script. This module detec
 
 Add this line of JavaScript as high in the head of your main layout as possible, before any other JS: 
 
-<pre>
+```html
 <script type="text/javascript">document.cookie = '<%= Sitecore.Configuration.Settings.GetSetting("cookieName") %>=' + Math.max(screen.width, screen.height) + '; path=/';</script>
-</pre>
+```
 
 The module itself  can be installed as a package through the installation wizard or the source files can be compiled and the dll and config files can be dropped into your Sitecore solution. You can download the module from the Sitecore Marketplace or GitHub.
 
